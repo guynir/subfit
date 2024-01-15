@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"strings"
 	"subfit/formatutils"
 	"subfit/subtitles"
 )
@@ -11,6 +13,7 @@ func main() {
 	inputFile := flag.String("input", "", "Input file")
 	outputFile := flag.String("output", "", "Output file")
 	adjustOffset := flag.Float64("adjust", 0, "Adjustment offset")
+	autoOverwrite := flag.Bool("y", false, "Auto overwrite")
 	flag.Parse()
 
 	if formatutils.IsEmpty(*inputFile) {
@@ -19,8 +22,7 @@ func main() {
 	}
 
 	if formatutils.IsEmpty(*outputFile) {
-		fmt.Println("Missing output file.")
-		return
+		outputFile = inputFile
 	}
 
 	srt, err := subtitles.New(*inputFile)
@@ -32,6 +34,22 @@ func main() {
 	if *adjustOffset != 0 {
 		fmt.Printf("Adjusting subtitles in %.3f seconds.\n", *adjustOffset)
 		srt.Adjust(float32(*adjustOffset))
+	}
+
+	if _, err := os.Stat(*outputFile); err == nil && !*autoOverwrite {
+		fmt.Printf("Are you sure you want to overwrite '%s' ? ", *outputFile)
+		var b []byte = []byte{'n'}
+
+		_, err := os.Stdin.Read(b)
+		if err != nil {
+			fmt.Println("Aborting")
+			return
+		}
+		str := strings.ToLower(string(b))
+		if str == "n" {
+			fmt.Println("Aborting")
+			return
+		}
 	}
 
 	err = srt.SaveTo(*outputFile)
